@@ -24,6 +24,7 @@ function shutdown (module) {
 
 		shutdownFn(() => {
 			try {
+				host.status = 'offline'
 				for (const h in host.app.hosts) {
 					if (host.app.hosts[h] === host.app) {
 						// remove the app
@@ -31,7 +32,6 @@ function shutdown (module) {
 					}
 				}
 				host.app = undefined
-				host.status = 'offline'
 				// this is *pretty* hacky, but we don't want to lose diet or the modules object when
 				// decaching the module so we hold onto them here and restore them below
 				const diet = require.cache[require.resolve('diet')]

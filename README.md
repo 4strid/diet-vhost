@@ -82,7 +82,7 @@ have multiple instances of Diet and will run into an EADDRINUSE error.
 #### app.shutdown
 
 You can set a method called `shutdown` on your application if there is some cleanup that needs to
-be performed before tearing down the application (e.g. closing a socket.io connection).
+be performed before tearing down the application.
 ```
 app.shutdown = function (done) {
   // perform cleanup......
