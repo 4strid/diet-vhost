@@ -1,4 +1,3 @@
-package-lock.json
 node_modules
 app_modules/*
 app_modules/ctrl-panel/db/*
