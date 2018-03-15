@@ -1,0 +1,22 @@
+{{ extend '$layout.html' }}
+{{ block 'title': }}Diet V-Host Login{{end}}
+
+<h2>Login</h2>
+
+{{ if this.loggedOut: }}
+<p class="white-color">You have been logged out</p>
+{{ end }}
+
+<form method="post" class="white-color">
+	<div>
+		<label><span class="form-padded">username</span> <input type="text" name="username"></label>
+	</div>
+	<div>
+		<label><span class="form-padded">password</span> <input type="password" name="password"></label>
+	</div>
+	<button class="m80">Submit</button>
+</form>
+
+{{ if this.failedLogin: }}
+<p class="text-danger m80">Couldn't log in with that username/password</p>
+{{ end }}

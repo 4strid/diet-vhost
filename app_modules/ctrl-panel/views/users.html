@@ -1,0 +1,116 @@
+{{ extend '$layout.html' }}
+{{ block 'title': }}Diet V-Host - Users{{end}}
+
+<p class="white-color">Welcome {{-this.user.username }}<p>
+
+<h6>Manage Users:</h6>
+
+<div id="user-container">
+{{for user in this.users :}}
+	<div data-username="{{-user.username}}" class="rounded welly col-lg-5 col-md-8 col-sm-10">
+		<h4 class="m80">{{-user.username}}</h4>
+		{{if this.user.admin:}}
+		<label><span class="white-color form-padded">username</span> <input type="text" class="username-field" value="{{-user.username}}"></label><br>
+		{{end}}
+		<label><span class="white-color form-padded">email</span> <input type="text" class="email-field" value="{{-user.email}}"></label><br>
+		<label><span class="white-color form-padded">password</span> <input type="password" class="password-field"></label><br>
+		{{if this.user.admin:}}
+		{{if user.admin:}}
+		<label><span class="white-color form-padded">admin</span> <input type="checkbox" class="admin-field" checked="checked"></label> </br>
+		{{else: }}
+		<label><span class="white-color form-padded">admin</span> <input type="checkbox" class="admin-field"></label> </br>
+		{{end}}
+		{{end}}
+		<div class="m80">
+			<button type="button" onclick="post('{{-user.username}}')">Update</button>
+			{{if this.user.admin:}}
+			<button type="button" onclick="remove('{{-user.username}}')">Delete</button>
+			{{end}}
+		</div>
+	<p class="message white-color m80"></p>
+	</div>
+{{end}}
+</div>
+
+<div id="new-user-container" class="rounded welly col-lg-5 col-md-8 col-sm-10" {{if !this.user.admin:}}hidden="hidden"{{end}}>
+	<h4 class="m80">New User</h4>
+	<label><span class="white-color form-padded">username</span> <input type="text" class="username-field"></label><br>
+	<label><span class="white-color form-padded">email</span> <input type="text" class="email-field"></label><br>
+	<label><span class="white-color form-padded">password</span> <input type="password" class="password-field"></label><br>
+	<label><span class="white-color form-padded">admin</span> <input type="checkbox" class="admin-field"></label> </br>
+	<button type="button" onclick="post('')" class="m80">Create</button>
+	<p class="message white-color m80"></p>
+</div>
+
+{{ block 'scripts': }}
+<script type="text/javascript">
+var panels = {}
+var userEls = document.getElementById('user-container').children
+for (var i = 0; i < userEls.length; i++) {
+	panels[userEls[i].dataset.username] = new Panel(userEls[i])
+}
+panels[''] = new Panel(document.getElementById('new-user-container'))
+
+function Panel (div) {
+	this.self = div
+	this.username = div.querySelector('.username-field')
+	this.email = div.querySelector('.email-field')
+	this.password = div.querySelector('.password-field')
+	this.admin = div.querySelector('.admin-field')
+	this.message = div.querySelector('.message')
+}
+
+Panel.prototype.post = function () {
+	var self = this;
+	var username = self.self.dataset.username || ''
+	$.ajax({
+		type: 'POST',
+		url: '/api/users/' + username,
+		data: JSON.stringify({
+			username: self.username.value,
+			email: self.email.value,
+			password: self.password.value,
+			admin: !!self.admin.checked
+		}),
+		contentType: 'application/json; charset=utf-8'
+	})
+	.done(function (res) {
+		self.message.textContent = res
+		if (username === '') {
+			setTimeout(function () {
+				location.reload(true)
+			}, 2500)
+		}
+	})
+	.fail(function (err) {
+		self.message.textContent = JSON.stringify(err)
+	})
+}
+
+Panel.prototype.delete = function () {
+	var self = this;
+	var username = self.self.dataset.username
+	$.ajax({
+		url: '/api/users/' + username,
+		type: 'DELETE'
+	})
+	.done(function (res) {
+		self.message.textContent = JSON.stringify(res)
+		setTimeout(function () {
+			location.reload(true)
+		}, 1500)
+	})
+	.fail(function (err) {
+		self.message.textContent = JSON.stringify(err)
+	})
+}
+
+function post(username) {
+	panels[username].post()
+}
+function remove(username) {
+	panels[username].delete()
+}
+
+</script>
+{{ end }}

@@ -1,0 +1,195 @@
+{{ extend '$layout.html' }}
+{{ block 'title': }}Diet V-Host - Manage Hosts{{end}}
+
+<p class="white-color">Welcome {{-this.user.username }}<p>
+
+<h6>Manage Hosts:</h6>
+
+<div id="host-container">
+{{for host in this.hosts :}}
+	<div data-module="{{-host.module}}" class="rounded welly col-lg-5 col-md-8 col-sm-10">
+		<h4 class="m80">{{-host.heading}}</h4>
+		<label><span class="white-color form-padded">hostname</span> <input type="text" class="hostname-field" value="{{-host.hostname}}"></label><br>
+		<label><span class="white-color form-padded">module</span> <input type="text" class="module-field" value="{{-host.module}}"></label><br>
+		<label {{if !this.user.admin:}}hidden="hidden"{{end}}><span class="white-color form-padded">admin</span> <input type="text" class="admin-field" value="{{-host.admin}}"></label><br>
+		<h6 class="m80">Environment Variables</h6>
+		<div class="env-vars">
+			{{for envVar in host.env :}}
+			<p>
+				<label><span class="white-color form-padded">key</span> <input type="text" class="env-key-field" value="{{-envVar.key}}"></label><br>
+				<label><span class="white-color form-padded">value</span> <input type="text" class="env-value-field" value="{{-envVar.value}}"></label><br>
+			</p>
+			{{end}}
+			<p class="m80 addButton">
+				<button type="button" onclick="addEnvVar('{{-host.module}}')">+ Add Environment Variable</button>
+			</p>
+		</div>
+		<div class="m80">
+			<button type="button" onclick="post('{{-host.module}}')">Update</button>
+			{{if this.user.admin:}}
+			<button type="button" onclick="remove('{{-host.module}}')">Delete</button>
+			{{end}}
+		</div>
+		<p class="message white-color m80"></p>
+	</div>
+{{end}}
+</div>
+
+<div id="new-host-container" class="rounded welly col-lg-5 col-md-8 col-sm-10" {{if !this.user.admin:}}hidden="hidden"{{end}}>
+	<h4 class="m80">New host</h4>
+	<label><span class="white-color form-padded">hostname</span> <input type="text" class="hostname-field"></label><br>
+	<label><span class="white-color form-padded">module</span> <input type="text" class="module-field"></label><br>
+	<label><span class="white-color form-padded">admin</span> <input type="text" class="admin-field"></label><br>
+	<h6 class="m80">Environment Variables</h6>
+	<div class="env-vars">
+		<p class="m80 addButton">
+			<button type="button" onclick="addEnvVar('')">+ Add Environment Variable</button>
+		</p>
+	</div>
+	<button type="button" onclick="post('')" class="m80">Create</button>
+	<p class="message white-color m80"></p>
+</div>
+
+{{ block 'scripts': }}
+<script type="text/javascript">
+var panels = {}
+var hostEls = document.getElementById('host-container').children
+for (var i = 0; i < hostEls.length; i++) {
+	panels[hostEls[i].dataset.module] = new Panel(hostEls[i])
+}
+panels[''] = new Panel(document.getElementById('new-host-container'))
+
+function Panel (div) {
+	this.self = div
+	this.moduleName = div.dataset.module || ''
+	this.hostname = div.querySelector('.hostname-field')
+	this.module = div.querySelector('.module-field')
+	this.admin = div.querySelector('.admin-field')
+	this.message = div.querySelector('.message')
+	this.envVars = div.querySelector('.env-vars')
+	this.env = []
+	var envVars = this.envVars.children
+	for (var i = 0; i < envVars.length; i++) {
+		if (envVars[i].className === 'm80 addButton')
+			continue
+		this.env.push({
+			key: envVars[i].querySelector('.env-key-field'),
+			value: envVars[i].querySelector('.env-value-field')
+		})
+	}
+
+	var self = this
+
+	// ensure environment variable keys begin with the module name prefix
+	$(this.envVars).on('keyup', '.env-key-field', function () {
+		var prefix = envKey(self.moduleName + '__')
+		if (this.value.indexOf(prefix) === -1) {
+			this.value = prefix + this.value
+		}
+		if (this.value.length < prefix.length) {
+			this.value = prefix
+			this.selectionStart = this.selectionEnd = prefix.length
+		}
+		this.value = envKey(this.value)
+	})
+	
+	// update environment variable keys with new module name prefix
+	$(this.module).on('keyup paste', function () {
+		var oldModuleName = self.moduleName
+		self.moduleName = this.value
+		if (oldModuleName !== '') {
+			self.env.forEach(function (envVar) {
+				envVar.key.value = envVar.key.value.replace(envKey(oldModuleName), envKey(self.moduleName))
+			})
+		}
+	})
+}
+
+Panel.prototype.post = function () {
+	var self = this
+	var module = self.self.dataset.module || ''
+	var env = []
+	var prefix = envKey(self.moduleName + '__')
+	self.env.forEach(function (fields) {
+		if (fields.key.value === '' || fields.key.value === prefix)
+			return
+		env.push({
+			key: fields.key.value,
+			value: fields.value.value
+		})
+	})
+	$.ajax({
+		type: 'POST',
+		url: '/api/hosts/' + module,
+		data: JSON.stringify({
+			hostname: self.hostname.value,
+			module: self.moduleName,
+			admin: self.admin.value,
+			env: env
+		}),
+		contentType: 'application/json; charset=utf-8'
+	})
+	.done(function (res) {
+		self.message.textContent = res
+		if (module === '') {
+			setTimeout(function () {
+				location.reload(true)
+			}, 2500)
+		}
+	})
+	.fail(function (err) {
+		self.message.textContent = JSON.stringify(err)
+	})
+}
+
+Panel.prototype.delete = function () {
+	var self = this
+	var module = self.self.dataset.module
+	$.ajax({
+		url: '/api/hosts/' + module,
+		type: 'DELETE'
+	})
+	.done(function (res) {
+		self.message.textContent = JSON.stringify(res)
+		setTimeout(function () {
+			location.reload(true)
+		}, 1500)
+	})
+	.fail(function (err) {
+		self.message.textContent = JSON.stringify(err)
+	})
+}
+
+var panelTemplate = 
+'			<p>' + 
+'				<label><span class="white-color form-padded">key</span> <input type="text" class="env-key-field"></label><br>' +
+'				<label><span class="white-color form-padded">value</span> <input type="text" class="env-value-field"></label><br>' +
+'			</p>'
+
+Panel.prototype.addEnvVar = function () {
+	var envVars = $(this.envVars)
+	var newPanel = $(panelTemplate)
+	this.env.push({
+		key: newPanel.find('.env-key-field').get(0),
+		value: newPanel.find('.env-value-field').get(0),
+	})
+	envVars.append(newPanel)
+	envVars.find('.addButton').detach().appendTo(envVars)
+}
+
+function post(module) {
+	panels[module].post()
+}
+function remove(module) {
+	panels[module].delete()
+}
+function addEnvVar(module) {
+	panels[module].addEnvVar()
+}
+
+function envKey (string) {
+	return string.toUpperCase().replace(/[^0-9A-Z]/g, '_')
+}
+
+</script>
+{{ end }}

@@ -1,0 +1,138 @@
+{{ extend '$layout.html' }}
+{{ block 'title': }}Diet V-Host Control Panel{{end}}
+
+<p class="white-color">Welcome {{-this.user.username }}<p>
+
+<h6>Managed Servers:</h6>
+
+{{for host, i in this.managedHosts :}}
+<div id="host-{{-i}}" data-module={{-host.module}} class="rounded welly" style="width: 400px">
+	<div>
+		<h4 style="display: inline-block;">{{-host.hostname}}</h4>
+		<img src="/status_disconnected.png" width="22" height="22" style="position: relative; top: -5px; left: 5px;">
+	</div>
+	<button class="restart-button" type="button" onclick="restartX({{-i}})">Restart</button>
+	<button class="shutdown-button" type="button" onclick="shutdownX({{-i}})">Shutdown</button>
+	<button class="startup-button" type="button" onclick="startupX({{-i}})">Startup</button>
+	<p class="message text-main"></p>
+</div>
+{{end}}
+
+<div class="mtop30">
+	{{if this.user.admin :}}
+	<h6><a href="/manage/users/">Manage Users</a></h6>
+	<h6><a href="/manage/hosts/">Manage Hosts</a></h6>
+	<!--<h6><a href="/ctrl/inithosts">Load Hosts</a></h6>-->
+	{{else:}}
+	<h6><a href="/manage/users/">User Profile</a></h6>
+	<h6><a href="/manage/hosts/">Manage Hosts</a></h6>
+	{{end}}
+</div>
+
+{{ block 'scripts': }}
+<script type="text/javascript">
+function Light (img) {
+	this.img = img
+	this.status = 'disconnected'
+}
+
+Light.prototype.setStatus = function (status) {
+	this.status = status;
+	this.img.src = '/status_' + status + '.png'
+}
+
+function Panel (host) {
+	this.host = host
+	this.light = new Light(host.querySelector('img'))
+	this.restartBtn = host.querySelector('.restart-button')
+	this.startupBtn = host.querySelector('.startup-button')
+	this.shutdownBtn = host.querySelector('.shutdown-button')
+	this.message = host.querySelector('.message')
+}
+Panel.prototype.setStatus = function (status) {
+	this.light.setStatus(status)
+	if (status === 'online') {
+		this.restartBtn.disabled = ''
+		this.startupBtn.disabled = 'disabled'
+		this.shutdownBtn.disabled = ''
+	} else if (status === 'offline') {
+		this.restartBtn.disabled = 'disabled'
+		this.startupBtn.disabled = ''
+		this.shutdownBtn.disabled = 'disabled'
+	} else { // restarting or disconnected
+		this.restartBtn.disabled = 'disabled'
+		this.startupBtn.disabled = 'disabled'
+		this.shutdownBtn.disabled = 'disabled'
+	}
+	// if you shut ctrl-panel down, there's no way to start it back up
+	// so this button should always be disabled
+	if (this.host.dataset.module === 'ctrl-panel') {
+		this.shutdownBtn.disabled = 'disabled'
+	}
+}
+Panel.prototype.setMessage = function (message) {
+	this.message.innerHTML = message
+}
+Panel.prototype.action = function (url) {
+	var self = this
+	self.setStatus('restarting')
+	$.post(url, {module: this.host.dataset.module}, function (res) {
+		if (typeof res === 'string') {
+			self.setStatus(res)
+			self.setMessage('')
+		} else if (typeof res === 'object') {
+			self.setStatus(res.status)
+			self.setMessage(res.message)
+		}
+	})
+	.fail(function (err) {
+		self.setStatus('disconnected')
+		self.setMessage('Error connecting to server')
+	})
+}
+Panel.prototype.restart = function () {
+	this.action('/ctrl/restart')
+}
+Panel.prototype.startup = function () {
+	this.action('/ctrl/startup')
+}
+Panel.prototype.shutdown = function () {
+	this.action('/ctrl/shutdown')
+}
+
+function restartX (i) {
+	panels[i].restart()
+}
+function shutdownX (i) {
+	panels[i].shutdown()
+}
+function startupX (i) {
+	panels[i].startup()
+}
+
+function getStatus () {
+	panels.forEach(function (panel) {
+		$.get('/ctrl/status/', {module: panel.host.dataset.module}, function (res) {
+			panel.setStatus(res)
+		})
+		.fail(function () {
+			panel.setStatus('disconnected')
+		})
+	})
+	setTimeout(getStatus, 5000)
+}
+
+var panels = []
+var i = 0
+var next = document.getElementById('host-' + i)
+while (next) {
+	panels.push(new Panel(next))
+	i++
+	next = document.getElementById('host-' + i)
+}
+
+getStatus()
+
+</script>
+{{end}}
+
