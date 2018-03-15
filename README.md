@@ -19,9 +19,21 @@ To get started, clone the repository into whatever directory you like.
 git clone git@github.com:cutejs/diet-vhost.git
 ```
 
-Next run the setup script to set up the control panel.
+NPM install the modules for the top level platform, as well as for the control panel website.
+
 ```
 cd diet-vhost
+npm install
+```
+
+```
+cd app_modules/ctrl-panel
+npm install
+```
+
+Next run the setup script to set up the control panel.
+```
+cd ../..
 npm run setup
 ```
 

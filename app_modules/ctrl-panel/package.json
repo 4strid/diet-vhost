@@ -24,9 +24,5 @@
     "mime": "^1",
     "morgan": "^1.8.2",
     "nekodb": "^1.0.1"
-  },
-  "devDependencies": {
-    "diet": "^0.16.0",
-    "dotenv": "^4.0.0"
   }
 }
