@@ -17,34 +17,41 @@ function shutdown (module) {
 	// on localhost or something; we don't know the hostname for sure
 	return new Promise((resolve, reject) => {
 		const host = lookup(module)
-		try {
-			for (const h in host.app.hosts) {
-				if (host.app.hosts[h] === host.app) {
-					// remove the app
-					host.app.hosts[h] = undefined
+
+		// if the app needs to do some cleanup before shutting down
+		// it can supply a .shutdown method called here
+		const shutdownFn = host.app.shutdown || function (done) { done() }
+
+		shutdownFn(() => {
+			try {
+				for (const h in host.app.hosts) {
+					if (host.app.hosts[h] === host.app) {
+						// remove the app
+						host.app.hosts[h] = undefined
+					}
 				}
+				host.app = undefined
+				host.status = 'offline'
+				// this is *pretty* hacky, but we don't want to lose diet or the modules object when
+				// decaching the module so we hold onto them here and restore them below
+				const diet = require.cache[require.resolve('diet')]
+				const modules = require.cache[require.resolve('../../../modules')]
+				// unrequire the module
+				decache('../../' + module)
+				// restore saved modules
+				require.cache[require.resolve('diet')] = diet
+				require.cache[require.resolve('../../../modules')] = modules
+				// sometimes I run into errors shutting down / starting up too close together
+				// this gives us some breathing room
+				setTimeout(() => {
+					resolve()
+				}, 100)
+			} catch (err) {
+				host.app = undefined
+				host.status = 'offline'
+				reject(err)
 			}
-			host.app = undefined
-			host.status = 'offline'
-			// this is *pretty* hacky, but we don't want to lose diet or the modules object when
-			// decaching the module so we hold onto them here and restore them below
-			const diet = require.cache[require.resolve('diet')]
-			const modules = require.cache[require.resolve('../../../modules')]
-			// unrequire the module
-			decache('../../' + module)
-			// restore saved modules
-			require.cache[require.resolve('diet')] = diet
-			require.cache[require.resolve('../../../modules')] = modules
-			// sometimes I run into errors shutting down / starting up too close together
-			// this gives us some breathing room
-			setTimeout(() => {
-				resolve()
-			}, 100)
-		} catch (err) {
-			host.app = undefined
-			host.status = 'offline'
-			reject(err)
-		}
+		})
 	})
 }
 
