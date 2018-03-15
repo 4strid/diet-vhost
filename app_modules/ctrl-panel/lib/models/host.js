@@ -5,7 +5,7 @@ const envKey = require('../envkey')
 const Host = ko.Model('Host', {
 	module: ko.String,
 	hostname: ko.URL,
-	admin: ko.String,
+	admin: ko.String.optional(),
 	env: [{
 		key: ko.String,
 		value: ko.String,
@@ -27,6 +27,12 @@ const Host = ko.Model('Host', {
 				key: envKey(instance.module + '__HOSTNAME'),
 				value: instance.hostname,
 			})
+			next()
+		},
+		prevalidate: function (instance, next) {
+			if (instance.admin === '') {
+				instance.admin = null
+			}
 			next()
 		},
 	},
