@@ -79,6 +79,17 @@ Install Diet as a devDependency, not a dependency, and use `npm install --only=p
 install its dependencies. This way, all apps will share the platform's `diet` module. Otherwise, you will
 have multiple instances of Diet and will run into an EADDRINUSE error.
 
+#### app.shutdown
+
+You can set a method called `shutdown` on your application if there is some cleanup that needs to
+be performed before tearing down the application (e.g. closing a socket.io connection).
+```
+app.shutdown = function (done) {
+  // perform cleanup......
+  done()
+}
+```
+
 Starting an app in the control panel
 ------------------------------------
 With your application copied into the app\_modules directory, and with its dependencies installed,
